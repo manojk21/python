@@ -1,0 +1,108 @@
+import xml.etree.ElementTree as ET
+import os
+import zipfile
+import csv
+
+def activate_code_neuberger_berman(message):
+		
+		pc_folder_name = 'change_file' 
+		download_file(message, pc_folder_name)
+		path = 'G:\ptfolios\Tom\Python\change_file'
+
+		subject =  str(message.subject)
+
+		date = get_date(subject)
+		un_zip(path)
+		change_file(date)
+
+
+def get_date(subject):
+	
+	month_dict = {'ENERO' : 1,'FEBRERO': 2,'MARZO' : 3,'ABRIL' :4,'MAYO':5,'JUNIO' :6,'JULIO': 7,
+	'AGOSTO': 8, 'SEPTIEMBRE' : 9, 'OCTUBRE' : 10, 'NOVIEMBRE' :11, 'DICIEMBRE' :12, 'SETIEMBRE' :9}
+
+	for a in month_dict.keys():
+		if a in subject:
+			write_date = month_dict[a]
+
+	if write_date == 2 and (year_int == 2032 or year_int == 2020 or year_int == 2024 or year_int == 2028):
+			day_int = 29
+	elif write_date == 2:
+			day_int = 28
+	elif write_date == 4 or write_date == 6 or write_date == 9 or write_date == 11:
+			day_int = 30
+	elif write_date == 1 or write_date == 3 or write_date == 5 or write_date == 7 or write_date == 8 or write_date == 10 or write_date == 12:
+			day_int = 31
+	else:
+			pass
+
+	if write_date < 10:
+		final_month = '0' + str(write_date)
+	else:
+		final_month = str(write_date)
+
+	date_to_add =  str(final_month) +  str(day_int) + str(year_int)
+	return date_to_add
+
+# Finding fund code, using name of sub-folder as the unique fund code #
+def un_zip(path):
+
+		for root, dirs, files in os.walk(path):
+				if os.path.isfile(path + '\\Thumbs.db') is True:
+						files.remove('Thumbs.db')
+				for item in files:
+						file_name = str(root) + '\\' + str(item)
+
+		if '.zip' in item:
+				zip = zipfile.ZipFile(file_name)
+				zip.extractall(path)
+				zip.close()
+				os.remove(file_name)
+		else:
+				return
+
+def write_lines(subfolder, writer,code):
+			root = ET.parse(subfolder).getroot()
+			for registro in root:
+				for item in registro:
+					if item.tag == 'isin':
+						isin =  item.text
+					elif item.tag == 'descripcion_valor':
+						sec_desc =  item.text
+					elif item.tag == 'numero_titulos_existencias_finales':
+						position = item.text
+					elif item.tag == 'valor_razonable':
+						market_value = item.text
+					elif item.tag == 'total_valor_razonable':
+						isin = 'NET ASSETS'
+						sec_desc = "TNA"
+						position = item.text
+						market_value = item.text
+
+				try:
+					writer.writerow({'Fund Code': code,
+	                        'ISIN': isin,
+	                        'Security Description': sec_desc,
+	                        'position': position,
+	                        'Market Value': market_value})
+			
+				except UnicodeEncodeError: 
+					continue
+
+
+def change_file(date):
+	csv_file = open('Ranta4' + date + '.csv', 'wb')
+	fieldnames = ['Fund Code','ISIN','Security Description','position','Market Value']
+	writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+	writer.writeheader()
+
+	for folder in os.listdir(path + '\\M04'):
+		subfolder =  path + '\\M04\\' + folder + '\\M04.xml'
+		if os.path.isfile(subfolder) is True:
+			write_lines(subfolder, writer,folder)
+		else:
+			for f in os.listdir(path + '\\M04\\' + folder):
+				subfolder =  path + '\\M04\\' + folder + '\\' + f + '\\M04.xml'
+				if os.path.isfile(subfolder) is True:
+					write_lines(subfolder, writer,f)
+
